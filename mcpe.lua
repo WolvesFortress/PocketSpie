@@ -1,12 +1,12 @@
 -- MCPE Protocol dissector by Intyre
-mcpe_proto = Proto("MCPS","MCPS Protocol")
+mcpe_proto = Proto("PSPE","Protocol Support Pocket Edition")
 local subtree
 
 mcpe_proto.fields.id = ProtoField.string("mcpe.id", "Packet ID")
 mcpe_proto.fields.dataid = ProtoField.string("mcpe.dataid", "MCPE ID")
 
 function mcpe_proto.dissector(buffer,pinfo,tree)
-	pinfo.cols.protocol = "MCPE"
+	pinfo.cols.protocol = "PSPE"
 
 	local packetID = buffer(0,1)
 	local length = buffer:len()
