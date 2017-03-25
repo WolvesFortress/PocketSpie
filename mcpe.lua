@@ -1,5 +1,5 @@
 -- MCPE Protocol dissector by Intyre
-mcpe_proto = Proto("MCPE","MCPE Protocol")
+mcpe_proto = Proto("MCPS","MCPS Protocol")
 local subtree
 
 mcpe_proto.fields.id = ProtoField.string("mcpe.id", "Packet ID")
