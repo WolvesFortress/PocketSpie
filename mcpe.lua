@@ -1,4 +1,4 @@
--- MCPE Protocol dissector by Intyre
+-- MCCPE Protocol dissector by 7kasper, forked from Intyre
 mcpe_proto = Proto("PSPE","Protocol Support Pocket Edition")
 local subtree
 
@@ -6,58 +6,58 @@ mcpe_proto.fields.id = ProtoField.string("mcpe.id", "Packet ID")
 mcpe_proto.fields.dataid = ProtoField.string("mcpe.dataid", "MCPE ID")
 
 function mcpe_proto.dissector(buffer,pinfo,tree)
-	pinfo.cols.protocol = "PSPE"
+	pinfo.cols.protocol = "MCCPE"
 
 	local packetID = buffer(0,1)
 	local length = buffer:len()
 
 	m = mcpe_proto.fields
 
-	pinfo.cols.info = "Data 0x" .. packetID
-	subtree = tree:add(mcpe_proto,buffer(),"Data 0x" .. packetID)
+	pinfo.cols.info = "Unknown: " ..  packetID:uint() .. "(0x" .. packetID .. ")"
+	subtree = tree:add(mcpe_proto, buffer(), "Raknet " .. packetID:uint() .. " (0x" .. packetID .. ")")
 	subtree:add("Data Length: " .. length)
 	subtree:add(m.id, buffer(0,1), "0x" .. buffer(0,1))
 
 
-	if (packetID:uint() == 0x02) then
-		pinfo.cols.info = "ID_UNCONNECTED_PING_OPEN_CONNECTIONS: 0x02"
+	if (packetID:uint() == 1) then
+		pinfo.cols.info = "RN: UC: Ping"
 		subtree:add(buffer(1,8),"Ping ID: " .. buffer(1,8))
 		subtree:add(buffer(9,16),"Magic: " ..  buffer(9,16))
-	elseif (packetID:uint() == 0x1c) then
-		pinfo.cols.info = "ID_UNCONNECTED_PING_OPEN_CONNECTIONS: 0x1c"
+	elseif (packetID:uint() == 28) then
+		pinfo.cols.info = "RN: UC: Pong"
 		subtree:add(buffer(1,8), "Ping ID: " .. buffer(1,8))
 		subtree:add(buffer(9,8), "Server ID: " ..buffer(9,8))
 		subtree:add(buffer(17,16), "MAGIC: " .. buffer(17,16))
 		subtree:add(buffer(33,2), "Length: " .. buffer(33,2):uint())
 		subtree:add(buffer(35,11),"Indentifier: " .. buffer(35,11):string())
 		subtree:add(buffer(46,-1),"Server name: " .. buffer(46,-1):string())
-	elseif (packetID:uint() == 0x05) then
-		pinfo.cols.info = "ID_OPEN_CONNECTION_REQUEST_1: 0x05"
+	elseif (packetID:uint() == 5) then
+		pinfo.cols.info = "RN: UC: Open Connection Request"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
 		subtree:add(buffer(17,1),"Protocol version: " .. buffer(17,1))
 		subtree:add(buffer(18,-1),"Null Payload")
-	elseif (packetID:uint() == 0x06) then
-		pinfo.cols.info = "ID_OPEN_CONNECTION_REPLY_1: 0x06"
+	elseif (packetID:uint() == 6) then
+		pinfo.cols.info = "RN: UC: Open Connection Reply"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
 		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8))
 		subtree:add(buffer(25,1),"Server security: " .. buffer(25,1))
 		subtree:add(buffer(26,-1),"MTU Size: " .. buffer(26,-1):uint())
-	elseif (packetID:uint() == 0x07) then
-		pinfo.cols.info = "ID_OPEN_CONNECTION_REQUEST_2: 0x07"
+	elseif (packetID:uint() == 7) then
+		pinfo.cols.info = "RN: UC: Open Connection Request 2"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
 		subtree:add(buffer(17,5),"Sercurity + Cookie: " .. buffer(17,5))
 		subtree:add(buffer(22,2),"Server Port: " .. buffer(22,2):uint())
 		subtree:add(buffer(24,2),"MTU Size: " .. buffer(24,2):uint())
 		subtree:add(buffer(26,8),"Client ID: " .. buffer(26,8))
-	elseif (packetID:uint() == 0x08) then
-		pinfo.cols.info = "ID_OPEN_CONNECTION_REPLY_2: 0x08"
+	elseif (packetID:uint() == 8) then
+		pinfo.cols.info = "RN: UC: Open Connection Reply 2"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
 		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8))
 		subtree:add(buffer(25,2),"Client port: " .. buffer(25,2):uint())
 		subtree:add(buffer(27,2),"MTU Size: " .. buffer(27,2):uint())
 		subtree:add(buffer(29,1),"Security: " .. buffer(29,1))
-	elseif (packetID:uint() == 0xa0) then
-		pinfo.cols.info = "NACK Packet: 0xa0"
+	elseif (packetID:uint() == 160) then
+		pinfo.cols.info = "RN: C: NACK"
 		subtree:add(buffer(1,2),"Unknown: " .. buffer(1,2))
    	 	subtree:add(buffer(3,1),"Additional Packet: " .. buffer(3,1))
 		if(buffer(3,1):uint() == 0x01) then
@@ -68,8 +68,8 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			getTime:add(buffer(4,3),"Packet number: " .. buffer(4,3):le_uint())
 			getTime:add(buffer(7,3),"Packet number: " .. buffer(7,3):le_uint())
 		end
-	elseif (packetID:uint() == 0xc0) then
-		pinfo.cols.info = "ACK Packet: 0xc0"
+	elseif (packetID:uint() == 192) then
+		pinfo.cols.info = "RN: C: ACK"
 		subtree:add(buffer(1,2),"Unknown: " .. buffer(1,2))
    	 	subtree:add(buffer(3,1),"Additional Packet: " .. buffer(3,1))
 		if(buffer(3,1):uint() == 0x01) then
@@ -80,8 +80,70 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			getTime:add(buffer(4,3),"Packet number: " .. buffer(4,3):le_uint())
 			getTime:add(buffer(7,3),"Packet number: " .. buffer(7,3):le_uint())
 		end
-	elseif (packetID:uint() >= 0x80 or packetID:uint() <= 0x8f) then
+	--[[elseif (packetID:uint() == 0x84) then
+		pinfo.cols.info = "MCPE PACKET!"
+	end]]--
+	elseif (packetID:uint() == 132) then
+		pinfo.cols.info = "RN: C: Encapsulated"
 		subtree:add(buffer(1,3), "Packet number: " .. buffer(1,3):le_uint())
+		encap = tree:add(mcpe_proto, buffer(4), "Encapsulated " .. buffer(4,1):uint() .. " (0x" .. buffer(4,1) .. ")")
+		
+		local encapInfo = buffer(4,1)
+		
+		encap:add(buffer(4,1), "Info: " .. encapInfo:uint())
+		encap:add(buffer(5,2), "Length: " .. buffer(5,2):uint())
+		local bufIndex = 7
+		if (bit.band(encapInfo:uint(), 0x7f)) >= 64 then 
+			encap:add(buffer(7,3), "Message Index: " .. buffer(7,3):uint()) 
+			bufIndex = bufIndex + 3
+		end
+		if (bit.band(encapInfo:uint(), 0x7f)) >= 96  then
+			encap:add(buffer(10,3), "Order Index: " .. buffer(10,3):le_uint()) 
+			encap:add(buffer(13,1), "Order Channel: " .. buffer(11,1):uint()) 
+			bufIndex = bufIndex + 4
+		end
+		if (bit.band(encapInfo:uint(), 0x10)) ~= 0 then
+			split = encap:add(buffer(bufIndex, 10), "Split")
+			split:add(buffer(bufIndex,4), "Count: " .. buffer(bufIndex,4):uint()) 
+			split:add(buffer(bufIndex + 4,2), "Id: " .. buffer(bufIndex + 4,2):uint()) 
+			split:add(buffer(bufIndex + 6,4), "Order: " .. buffer(bufIndex + 6,4):uint()) 
+			bufIndex = bufIndex + 10
+		end
+		
+		--==PAYLOAD==--
+		
+		--packet = tree:add(mcpe_proto, buffer(bufIndex), "Packet " .. buffer(bufIndex,1):uint() .. " (0x" .. buffer(4,1) .. ")")
+		encapIdB = buffer(bufIndex,1)
+		encapId = encapIdB:uint()
+		bufIndex = bufIndex + 1
+		encap:add(encapIdB, "Encapsulated ID: " .. encapId)
+		
+		if encapId == 0 then
+			pinfo.cols.info = "RN: E: Ping"
+			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Ping " .. encapId .. " (0x" .. encapIdB .. ")")
+			packet:add(buffer(bufIndex,8), "Time: " .. buffer(bufIndex,8):uint64())
+			bufIndex = bufIndex + 8
+		else if encapId == 3 then
+			pinfo.cols.info = "RN: E: Pong"
+			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Pong " .. encapId .. " (0x" .. encapIdB .. ")")
+			packet:add(buffer(bufIndex,8), "Time: " .. buffer(bufIndex,8):uint64())
+			bufIndex = bufIndex + 8
+		else if encapId == 9 then
+			pinfo.cols.info = "RN: E: Client Connect"
+			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Client Connect " .. encapId .. " (0x" .. encapIdB .. ")")
+			packet:add(buffer(bufIndex,8), "Client Id: " .. buffer(bufIndex,8):uint64())
+			packet:add(buffer(bufIndex+8,8), "Ping Id: " .. buffer(bufIndex,8):uint64())
+			bufIndex = bufIndex + 16
+		else if encapId == 16 then
+			pinfo.cols.info = "RN: E: Server Handshake"
+			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Server Handshake " .. encapId .. " (0x" .. encapIdB .. ")")
+			packet:add(buffer(bufIndex,8), "Client Id: " .. buffer(bufIndex,8):uint64())
+		end
+		
+		--PE PACKET!!!! YAAAAAYYYY!!!--
+		
+		
+		--[[
 		data = buffer(4,-1)
 		len = data:len() -4
 		plength = 0
@@ -102,7 +164,7 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			end
 			iX = i
 
-			if data(i,1):uint() == 0x82 then
+			if data(i,1):uint() == 0x01 then
 				part = subtree:add(data(i,plength),"LoginPacket")
 				i = dataStart(part,data,iS,idp)
 
@@ -110,7 +172,7 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 				i = getInt(part,data,i,"Int")
 				i = getInt(part,data,i,"Int")
 
-			elseif data(i,1):uint() == 0x83 then
+			elseif data(i,1):uint() == 0x02 then
 				part = subtree:add(data(i,plength), "LoginStatusPacket")
 				i = dataStart(part,data,iS,idp)
 
@@ -122,20 +184,21 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 
 				i = getByte(part,data,i,"Byte")
 
-			elseif data(i,1):uint() == 0x85 then
+			elseif data(i,1):uint() == 0x0a then
 				part = subtree:add(data(i,plength), "MessagePacket")
 				i = dataStart(part,data,iS,idp);
-
+				-- TODO: Update that for more message types.
+				i = getString(part,data,i,"Sender")
 				i = getString(part,data,i,"Message")
 
-			elseif data(i,1):uint() == 0x86 then
+			elseif data(i,1):uint() == 0x0b then
 				part = subtree:add(data(i,plength), "SetTimePacket")
 				i = dataStart(part,data,iS,idp);
 
-				i = getShortLE(part,data,i,"Short")
-				i = getShortLE(part,data,i,"Short")
+				i = getShortLE(part,data,i,"Time")
+				i = getByte(part,data,i,"Daylight Cycle")
 
-			elseif data(i,1):uint() == 0x87 then
+			elseif data(i,1):uint() == 0x0c then
 				part = subtree:add(data(i,plength), "StartGamePacket")
 				i = dataStart(part,data,iS,idp);
 
@@ -146,19 +209,8 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 				i = getFloat(part,data,i,"X")
 				i = getFloat(part,data,i,"Y")
 				i = getFloat(part,data,i,"Z")
-
-			elseif data(i,1):uint() == 0x88 then
-				part = subtree:add(data(i,plength), "AddMobPacket")
-				i = dataStart(part,data,iS,idp);
-
-				i = getInt(part,data,i,"Entity ID")
-				i = getMobName(part,data,i)
-				i = getFloat(part,data,i,"X")
-				i = getFloat(part,data,i,"Y")
-				i = getFloat(part,data,i,"Z")
-				pinfo.cols.info:append(" <-- Unknown!!")
-
-			elseif data(i,1):uint() == 0x89 then
+				
+			elseif data(i,1):uint() == 0x0d then
 				part = subtree:add(data(i,plength), "AddPlayerPacket")
 				i = dataStart(part,data,iS,idp);
 
@@ -171,6 +223,17 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 				i = getFloat(part,data,i,"Z")
 				part:add("Metadata until 0x7f")
 				pinfo.cols.info:append(" <-- Stuff missing!!")
+				
+			elseif data(i,1):uint() == 0x0e then
+				part = subtree:add(data(i,plength), "AddEnityPacket")
+				i = dataStart(part,data,iS,idp);
+
+				i = getInt(part,data,i,"Entity ID")
+				i = getMobName(part,data,i)
+				i = getFloat(part,data,i,"X")
+				i = getFloat(part,data,i,"Y")
+				i = getFloat(part,data,i,"Z")
+				pinfo.cols.info:append(" <-- Unknown!!")
 
 			elseif data(i,1):uint() == 0x8a then
 				part = subtree:add(data(i,plength), "RemovePlayerPacket")
@@ -447,10 +510,11 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 
 			elseif data(i,1):uint() == 0xb1 then
 				part = subtree:add(data(i,plength), "ChatPacket")
+				pinfo.cols.info:append(" <-- ChatPacket")
 				i = dataStart(part,data,iS,idp);
-
-				pinfo.cols.info:append(" <-- Unknown!!")
-
+				i = getByte(part,data,i,"Type")
+				i = getString(part,data,i,"Message")
+				
 			elseif data(i,1):uint() == 0xb2 then
 				part = subtree:add(data(i,plength), "SignUpdatePacket")
 				i = dataStart(part,data,iS,idp);
@@ -549,10 +613,15 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			i = iX + plength
 			total = total + 1
 		end
-		pinfo.cols.info:append(" (" .. total .. ")")
+		pinfo.cols.info:append(" (" .. total .. ")") ]]--
 	end
 
 end
+
+function getRakNetAdress(part, data, i) {
+	part:add(data(i,1), name .. ": " .. data(i,1))
+	--returmejrawl TODO: FINISH :P
+}
 
 function getString(tree,data,i,name)
 	slength = data(i,2):uint()
@@ -625,6 +694,3 @@ end
 
 udp_table = DissectorTable.get("udp.port")
 udp_table:add(19132,mcpe_proto)
-udp_table:add(19133,mcpe_proto)
-udp_table:add(19134,mcpe_proto)
-udp_table:add(19135,mcpe_proto)
