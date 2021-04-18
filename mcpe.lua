@@ -17,6 +17,7 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 	subtree = tree:add(mcpe_proto, buffer(), "Raknet " .. packetID:uint() .. " (0x" .. packetID .. ")")
 	subtree:add("Data Length: " .. length)
 	subtree:add(m.id, buffer(0,1), "0x" .. buffer(0,1))
+	local runsplit = false
 
 
 	if (packetID:uint() == 1) then
@@ -54,7 +55,7 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
 		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8):uint64())
 		subtree:add(buffer(25,5),"Client Address: " .. buffer(25,5))
-		subtree:add(buffer(30,2),"Client port: " .. buffer(30,2):uint64())
+		subtree:add(buffer(30,2),"Client port: " .. buffer(30,2):uint())
 		subtree:add(buffer(32,2),"MTU Size: " .. buffer(32,2):uint())
 		subtree:add(buffer(34,1),"Security: " .. buffer(34,1))
 	elseif (packetID:uint() == 160) then
@@ -81,9 +82,6 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			getTime:add(buffer(4,3),"Packet number: " .. buffer(4,3):le_uint())
 			getTime:add(buffer(7,3),"Packet number: " .. buffer(7,3):le_uint())
 		end
-	--[[elseif (packetID:uint() == 0x84) then
-		pinfo.cols.info = "MCPE PACKET!"
-	end]]--
 	elseif (packetID:uint() == 132) then
 		pinfo.cols.info = "RN: C: Encapsulated"
 		subtree:add(buffer(1,3), "Packet number: " .. buffer(1,3):le_uint())
@@ -141,11 +139,10 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Server Handshake " .. encapId .. " (0x" .. encapIdB .. ")")
 			packet:add(buffer(bufIndex,8), "Client Id: " .. buffer(bufIndex,8):uint64())
 		end
-		
+	--end
+	elseif (packetID:uint() >= 0x80 or packetID:uint() <= 0x8f) then
 		--PE PACKET!!!! YAAAAAYYYY!!!--
 		
-		
-		--[[
 		data = buffer(4,-1)
 		len = data:len() -4
 		plength = 0
@@ -166,7 +163,33 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			end
 			iX = i
 
-			if data(i,1):uint() == 0x01 then
+
+			if (packetID:uint() == 0x80 and idp == 0x10) then
+			    pinfo.cols.info = "RN: E: Server Handshake"
+			    i = i - 3
+			    packet = subtree:add(data(i,plength), "Server Handshake " .. total .. " (0x" .. idp .. ")")
+			    i = i + 1
+			    packet:add(data(i,5), "Client IP: " .. data(i,5))
+			    i = i + 5
+			    packet:add(data(i,2), "Client Port: " .. data(i,2):uint())
+			    i = i + 2
+			    i = i + 2--skip short
+			    
+			    while (data(i,-1):len() > 16) do
+			        --i = i + 1
+			        packet:add(data(i,5), "Server IP: " .. data(i,5))
+			        i = i + 5
+			        packet:add(data(i,2), "Server Port: " .. data(i,2):uint())
+			        i = i + 2
+			    end
+			    
+			    packet:add(data(i,8), "Ping Id: " .. data(i,8):uint64())
+			    i = i + 8
+			    packet:add(data(i,8), "Pong Id: " .. data(i,8):uint64())
+			    i = i + 8
+			    
+			
+			elseif data(i,1):uint() == 0x01 then
 				part = subtree:add(data(i,plength),"LoginPacket")
 				i = dataStart(part,data,iS,idp)
 
@@ -615,7 +638,7 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			i = iX + plength
 			total = total + 1
 		end
-		pinfo.cols.info:append(" (" .. total .. ")") ]]--
+		pinfo.cols.info:append(" (" .. total .. ")")
 	end
 
 end
