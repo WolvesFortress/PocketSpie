@@ -21,41 +21,42 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 
 	if (packetID:uint() == 1) then
 		pinfo.cols.info = "RN: UC: Ping"
-		subtree:add(buffer(1,8),"Ping ID: " .. buffer(1,8))
+		subtree:add(buffer(1,8),"Ping ID: " .. buffer(1,8):uint64())
 		subtree:add(buffer(9,16),"Magic: " ..  buffer(9,16))
+		subtree:add(buffer(25,-1),"Client ID: " .. buffer(25,-1):uint64())
 	elseif (packetID:uint() == 28) then
 		pinfo.cols.info = "RN: UC: Pong"
-		subtree:add(buffer(1,8), "Ping ID: " .. buffer(1,8))
-		subtree:add(buffer(9,8), "Server ID: " ..buffer(9,8))
+		subtree:add(buffer(1,8), "Ping ID: " .. buffer(1,8):uint64())
+		subtree:add(buffer(9,8), "Server ID: " ..buffer(9,8):uint64())
 		subtree:add(buffer(17,16), "MAGIC: " .. buffer(17,16))
 		subtree:add(buffer(33,2), "Length: " .. buffer(33,2):uint())
-		subtree:add(buffer(35,11),"Indentifier: " .. buffer(35,11):string())
-		subtree:add(buffer(46,-1),"Server name: " .. buffer(46,-1):string())
+		subtree:add(buffer(35,-1),"Data: " .. buffer(35,-1):string())
 	elseif (packetID:uint() == 5) then
 		pinfo.cols.info = "RN: UC: Open Connection Request"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
-		subtree:add(buffer(17,1),"Protocol version: " .. buffer(17,1))
+		subtree:add(buffer(17,1),"Protocol version: " .. buffer(17,1):uint())
 		subtree:add(buffer(18,-1),"Null Payload")
 	elseif (packetID:uint() == 6) then
 		pinfo.cols.info = "RN: UC: Open Connection Reply"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
-		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8))
+		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8):uint64())
 		subtree:add(buffer(25,1),"Server security: " .. buffer(25,1))
 		subtree:add(buffer(26,-1),"MTU Size: " .. buffer(26,-1):uint())
 	elseif (packetID:uint() == 7) then
 		pinfo.cols.info = "RN: UC: Open Connection Request 2"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
-		subtree:add(buffer(17,5),"Sercurity + Cookie: " .. buffer(17,5))
+		subtree:add(buffer(17,5),"Address: " .. buffer(17,5))
 		subtree:add(buffer(22,2),"Server Port: " .. buffer(22,2):uint())
 		subtree:add(buffer(24,2),"MTU Size: " .. buffer(24,2):uint())
-		subtree:add(buffer(26,8),"Client ID: " .. buffer(26,8))
+		subtree:add(buffer(26,8),"Client ID: " .. buffer(26,8):uint64())
 	elseif (packetID:uint() == 8) then
 		pinfo.cols.info = "RN: UC: Open Connection Reply 2"
 		subtree:add(buffer(1,16),"Magic: " .. buffer(1,16))
-		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8))
-		subtree:add(buffer(25,2),"Client port: " .. buffer(25,2):uint())
-		subtree:add(buffer(27,2),"MTU Size: " .. buffer(27,2):uint())
-		subtree:add(buffer(29,1),"Security: " .. buffer(29,1))
+		subtree:add(buffer(17,8),"Server ID: " .. buffer(17,8):uint64())
+		subtree:add(buffer(25,5),"Client Address: " .. buffer(25,5))
+		subtree:add(buffer(30,2),"Client port: " .. buffer(30,2):uint64())
+		subtree:add(buffer(32,2),"MTU Size: " .. buffer(32,2):uint())
+		subtree:add(buffer(34,1),"Security: " .. buffer(34,1))
 	elseif (packetID:uint() == 160) then
 		pinfo.cols.info = "RN: C: NACK"
 		subtree:add(buffer(1,2),"Unknown: " .. buffer(1,2))
@@ -123,18 +124,19 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Ping " .. encapId .. " (0x" .. encapIdB .. ")")
 			packet:add(buffer(bufIndex,8), "Time: " .. buffer(bufIndex,8):uint64())
 			bufIndex = bufIndex + 8
-		else if encapId == 3 then
+		elseif encapId == 3 then
 			pinfo.cols.info = "RN: E: Pong"
 			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Pong " .. encapId .. " (0x" .. encapIdB .. ")")
 			packet:add(buffer(bufIndex,8), "Time: " .. buffer(bufIndex,8):uint64())
 			bufIndex = bufIndex + 8
-		else if encapId == 9 then
+		elseif encapId == 9 then
 			pinfo.cols.info = "RN: E: Client Connect"
 			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Client Connect " .. encapId .. " (0x" .. encapIdB .. ")")
 			packet:add(buffer(bufIndex,8), "Client Id: " .. buffer(bufIndex,8):uint64())
-			packet:add(buffer(bufIndex+8,8), "Ping Id: " .. buffer(bufIndex,8):uint64())
+			packet:add(buffer(bufIndex+8,8), "Ping Id: " .. buffer(bufIndex+8,8):uint64())
+		    packet:add(buffer(bufIndex+16,1),"Security: " .. buffer(bufIndex+16,1))
 			bufIndex = bufIndex + 16
-		else if encapId == 16 then
+		elseif encapId == 16 then
 			pinfo.cols.info = "RN: E: Server Handshake"
 			packet = tree:add(mcpe_proto, buffer(bufIndex-1), "Server Handshake " .. encapId .. " (0x" .. encapIdB .. ")")
 			packet:add(buffer(bufIndex,8), "Client Id: " .. buffer(bufIndex,8):uint64())
@@ -618,10 +620,10 @@ function mcpe_proto.dissector(buffer,pinfo,tree)
 
 end
 
-function getRakNetAdress(part, data, i) {
+--[[ function getRakNetAdress(part, data, i) {
 	part:add(data(i,1), name .. ": " .. data(i,1))
 	--returmejrawl TODO: FINISH :P
-}
+} ]]--
 
 function getString(tree,data,i,name)
 	slength = data(i,2):uint()
